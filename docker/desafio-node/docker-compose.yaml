@@ -1,0 +1,65 @@
+version: '3'
+
+services: 
+
+  nodeapp:
+    build: 
+      context: .
+    container_name: nodeapp
+    networks: 
+      - internal
+    tty: true
+    restart: always
+    environment:
+      - DB_HOST=DB
+      - DB_USER=root
+      - DB_PASSWORD=root
+      - DB_DATABASE=nodedb
+    depends_on: 
+      db:
+        condition: service_healthy
+
+  db:
+    image: mysql:5.7
+    container_name: db
+    restart: always
+    tty: true
+    ports:
+      - 3306:3306
+    volumes: 
+      - mysql-data:/var/lib/mysql
+      - ./mysql/init.sql:/docker-entrypoint-initdb.d/init-script.sql
+    environment: 
+      - MYSQL_DATABASE=nodedb
+      - MYSQL_ROOT_PASSWORD=root
+    healthcheck:
+      test: ["CMD", "mysqladmin" ,"ping", "-h", "localhost"]
+      timeout: 20s
+      retries: 10
+    networks: 
+      - internal
+
+  nginx:
+    image: nginx
+    ports:
+        - 8080:3001
+    restart: always
+    networks:
+      - internal
+    depends_on:
+        - nodeapp
+    volumes:
+        - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+  adminer:
+    image: adminer
+    restart: always
+    ports:
+      - 8081:8080
+    networks:
+      - internal
+
+networks: 
+  internal:
+
+volumes:
+  mysql-data:
